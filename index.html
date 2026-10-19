@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>역사톡 프로토타입</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=Noto+Serif+KR:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --side:#25313B; --side-hi:#35444F; --side-text:#E8EDF0; --side-mute:#9DACB6;
+  --main:#F1F3EF; --panel:#FFFFFF; --ink:#1F2A31; --mute:#5C6A73; --line:#D8DDD7;
+  --accent:#2F7A72; --accent-ink:#FFFFFF; --gold:#B7862B; --danger:#A5453A; --danger-bg:rgba(165,69,58,.10);
+  --shadow:0 10px 34px rgba(20,30,40,.22);
+  --sans:'IBM Plex Sans KR','Apple SD Gothic Neo','Malgun Gothic',system-ui,sans-serif;
+  --serif:'Noto Serif KR','Nanum Myeongjo','Batang',serif;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --side:#141B21; --side-hi:#26333D; --side-text:#E8EDF0; --side-mute:#8797A2;
+    --main:#1B2329; --panel:#232D35; --ink:#E6ECEF; --mute:#97A5AE; --line:#33404A;
+    --accent:#5DB3A8; --accent-ink:#0E1D1B; --gold:#D8A94A; --danger:#E08A7E; --danger-bg:rgba(224,138,126,.14);
+    --shadow:0 10px 34px rgba(0,0,0,.5);
+  }
+}
+:root[data-theme="dark"]{
+  --side:#141B21; --side-hi:#26333D; --side-text:#E8EDF0; --side-mute:#8797A2;
+  --main:#1B2329; --panel:#232D35; --ink:#E6ECEF; --mute:#97A5AE; --line:#33404A;
+  --accent:#5DB3A8; --accent-ink:#0E1D1B; --gold:#D8A94A; --danger:#E08A7E; --danger-bg:rgba(224,138,126,.14);
+  --shadow:0 10px 34px rgba(0,0,0,.5);
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--main);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.6;overflow:hidden}
+button{font:inherit;color:inherit;cursor:pointer}
+input,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+[hidden]{display:none!important}
+.serif{font-family:var(--serif)}
+.muted{color:var(--mute)}
+
+/* 로그인 */
+#login{height:100%;display:grid;place-items:center;padding:20px;background:var(--side);
+  background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.035) 0 2px,transparent 2px 18px);overflow:auto}
+.card{width:min(410px,100%);background:var(--panel);border-radius:14px;padding:30px 28px;box-shadow:var(--shadow)}
+.brand{font-family:var(--serif);font-size:32px;font-weight:700;margin:0 0 4px}
+.tagline{margin:0 0 22px;color:var(--mute)}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:4px;background:var(--main);padding:4px;border-radius:10px;margin-bottom:18px}
+.seg button{border:0;background:transparent;padding:9px;border-radius:7px;font-weight:600;color:var(--mute)}
+.seg button[aria-pressed="true"]{background:var(--panel);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.15)}
+.field{display:block;margin-bottom:14px}
+.field span{display:block;font-size:13px;font-weight:600;margin-bottom:5px}
+.field input,.field textarea{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--panel)}
+.field textarea{resize:vertical;min-height:70px}
+.btn{border:0;border-radius:9px;padding:10px 16px;font-weight:600;background:var(--accent);color:var(--accent-ink)}
+.btn.full{width:100%;padding:12px}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.btn.small{padding:6px 12px;font-size:13px}
+.hint{font-size:13px;color:var(--mute);margin:14px 0 0}
+
+/* 앱 레이아웃 */
+#app{display:flex;height:100%}
+.side{width:284px;flex:none;background:var(--side);color:var(--side-text);display:flex;flex-direction:column;z-index:30}
+.me{display:flex;align-items:center;gap:6px;padding:12px;border-bottom:1px solid rgba(255,255,255,.09)}
+.me .who{flex:1;min-width:0;display:flex;align-items:center;gap:10px;text-align:left;background:none;border:0;color:inherit;padding:6px;border-radius:9px}
+.me .who:hover,.iconbtn:hover{background:rgba(255,255,255,.08)}
+.me .nm{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.me .sub{font-size:12px;color:var(--side-mute)}
+.iconbtn{width:34px;height:34px;display:grid;place-items:center;border:0;background:transparent;border-radius:8px;color:inherit;flex:none}
+.side-scroll{flex:1;overflow:auto;padding:8px}
+.sec{display:flex;justify-content:space-between;align-items:center;padding:14px 8px 6px;color:var(--side-mute);font-size:13px;font-weight:600}
+.item{display:flex;width:100%;align-items:center;gap:10px;padding:7px 8px;border-radius:9px;background:none;border:0;color:var(--side-text);text-align:left}
+.item:hover{background:rgba(255,255,255,.07)}
+.item.active{background:var(--side-hi)}
+.item .t{flex:1;min-width:0}
+.item .t b{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.item .t small{display:block;font-size:12px;color:var(--side-mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.roomdot{width:36px;height:36px;border-radius:10px;background:var(--side-hi);display:grid;place-items:center;font-weight:700;flex:none}
+.item.active .roomdot{background:rgba(255,255,255,.14)}
+.lockhint{display:flex;gap:8px;align-items:flex-start;width:100%;text-align:left;background:none;border:1px dashed rgba(255,255,255,.2);color:var(--side-mute);border-radius:9px;padding:8px 10px;margin-top:6px;font-size:13px}
+.addroom{display:flex;align-items:center;gap:8px;width:100%;background:none;border:1px dashed rgba(255,255,255,.3);color:var(--side-text);border-radius:9px;padding:8px 10px;margin-top:6px;font-weight:600}
+.addroom:hover{background:rgba(255,255,255,.07)}
+
+.av{flex:none;border-radius:50%;display:grid;place-items:center;color:#fff;font-family:var(--serif);font-weight:700;background-size:cover;background-position:center;border:0;padding:0;overflow:hidden}
+.tag{font-size:11px;font-weight:600;padding:1px 7px;border-radius:99px;margin-left:6px;vertical-align:1px}
+.tag.ai{background:var(--gold);color:#1c1503}
+.tag.teacher{background:var(--accent);color:var(--accent-ink)}
+
+.main{flex:1;min-width:0;display:flex;flex-direction:column;background:var(--main)}
+.head{display:flex;align-items:center;gap:12px;padding:0 16px;min-height:58px;border-bottom:1px solid var(--line);background:var(--panel);flex:none}
+.head h1{font-size:17px;margin:0;font-weight:700}
+.head .grow{flex:1;min-width:0}
+.head .grow small{display:block;color:var(--mute);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.menubtn{display:none;color:var(--ink)}
+.members{display:flex}
+.members .av{margin-left:-8px;border:2px solid var(--panel)}
+.members .av:first-child{margin-left:0}
+.notice{display:flex;gap:12px;align-items:flex-start;background:var(--panel);border-bottom:1px solid var(--line);padding:10px 16px;font-size:13px;color:var(--mute)}
+.notice p{margin:0;flex:1}
+.notice button{background:none;border:1px solid var(--line);border-radius:7px;padding:2px 10px;font-size:12px}
+.feed{flex:1;overflow:auto;padding:14px 16px 6px}
+.empty{color:var(--mute);text-align:center;margin-top:40px}
+.msg{display:flex;gap:12px;padding:8px 0;max-width:760px}
+.msg .body{min-width:0;flex:1}
+.meta{display:flex;align-items:baseline;gap:2px;flex-wrap:wrap}
+.meta .name{background:none;border:0;padding:0;font-weight:700;font-size:15px}
+.meta .name:hover{text-decoration:underline}
+.meta time{margin-left:8px;font-size:12px;color:var(--mute)}
+.text{white-space:pre-wrap;overflow-wrap:anywhere}
+.text.fig{font-family:var(--serif);font-size:15.5px;line-height:1.85;border-left:3px solid var(--gold);padding-left:12px;margin-top:3px}
+.refs{margin:10px 0 0 15px;font-size:12.5px;color:var(--mute)}
+.refs-title{font-weight:600;margin-bottom:2px}
+.refs ul{margin:0;padding-left:16px}
+.refs li{margin:1px 0}
+.refs a{color:var(--accent);margin-right:8px}
+.refs .source-note{font-size:11.5px;color:var(--mute);margin-top:5px}
+.followup-label{font-size:11.5px;color:var(--mute);margin:12px 0 5px}
+.chips button{max-width:100%;text-align:left}
+.msg .text.fig{white-space:pre-wrap}
+.verify{margin-top:5px;font-size:11.5px;color:var(--mute);opacity:.9}
+.lock{display:flex;gap:8px;align-items:center;margin:8px 0 0 15px;padding:7px 10px;border-radius:8px;background:var(--danger-bg);color:var(--danger);font-size:13px;font-weight:600;width:fit-content;max-width:100%}
+.dots{display:inline-flex;gap:4px;padding:8px 0}
+.dots i{width:7px;height:7px;border-radius:50%;background:var(--mute);opacity:.5;animation:blink 1.1s infinite}
+.dots i:nth-child(2){animation-delay:.18s}.dots i:nth-child(3){animation-delay:.36s}
+@keyframes blink{50%{opacity:1}}
+.chips{display:flex;gap:8px;flex-wrap:wrap;padding:6px 16px 0}
+.chips button{background:var(--panel);border:1px solid var(--line);border-radius:99px;padding:5px 13px;font-size:13px}
+.chips button:hover{border-color:var(--accent);color:var(--accent)}
+.composer{padding:10px 16px 16px;flex:none}
+.box{display:flex;align-items:flex-end;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:7px 7px 7px 14px}
+.box:focus-within{outline:2px solid var(--accent);outline-offset:1px}
+.box textarea{flex:1;border:0;background:transparent;resize:none;max-height:120px;outline:none;padding:7px 0;line-height:1.5}
+.send{width:38px;height:38px;border-radius:9px;border:0;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;flex:none}
+
+/* 모달 */
+.overlay{position:fixed;inset:0;background:rgba(10,15,20,.6);display:grid;place-items:center;padding:16px;z-index:60;overflow:auto}
+.pcard{width:min(400px,100%);background:var(--panel);border-radius:16px;overflow:hidden;box-shadow:var(--shadow)}
+.banner{height:118px;background-size:cover;background-position:center;position:relative}
+.banner .x{position:absolute;top:10px;right:10px;background:rgba(0,0,0,.35);color:#fff;border-radius:50%}
+.pbody{padding:0 22px 22px}
+.pav{margin-top:-44px;width:88px;height:88px;border-radius:50%;border:4px solid var(--panel);overflow:hidden;background:var(--panel)}
+.pname{font-family:var(--serif);font-size:24px;font-weight:700;margin:8px 0 0}
+.prole{color:var(--mute);font-size:14px;margin:0 0 14px}
+.rows{margin:0;display:grid;gap:12px}
+.rows dt{font-size:12.5px;font-weight:600;color:var(--mute);margin-bottom:1px}
+.rows dd{margin:0}
+.pactions{display:flex;gap:8px;margin-top:18px;flex-wrap:wrap}
+.toast{position:fixed;left:50%;bottom:calc(28px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:#222c33;color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;z-index:80;box-shadow:var(--shadow);max-width:90vw}
+.scrim{display:none}
+.toolsbar{display:flex;gap:6px;flex-wrap:wrap;padding:8px 14px;background:var(--panel);border-bottom:1px solid var(--line)}
+.toolsbar button{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:5px 9px;font-size:12px}
+.toolsbar button:hover{border-color:var(--accent);color:var(--accent)}
+.msgtools{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}
+.msgtools button{font-size:11px;padding:2px 7px;border:1px solid var(--line);border-radius:7px;background:var(--panel)}
+.msgtools button:hover{color:var(--accent);border-color:var(--accent)}
+.room-code{font-size:12px;background:var(--main);border:1px dashed var(--line);border-radius:8px;padding:7px 10px;margin:8px 0}
+.noticebar{border-left:3px solid var(--gold);padding:8px 12px;background:var(--panel);border-bottom:1px solid var(--line);font-size:13px;display:flex;gap:8px;align-items:flex-start}
+.noticebar span{flex:1;white-space:pre-wrap}
+.attachimg{display:block;max-width:min(360px,100%);max-height:260px;object-fit:contain;border-radius:10px;margin-top:8px;border:1px solid var(--line)}
+.shared-card{border:1px solid var(--line);border-radius:10px;padding:10px;margin-top:8px;background:var(--main)}
+.smallnote{font-size:12px;color:var(--mute)}
+
+
+@media (max-width:760px){
+  .side{position:fixed;inset:0 auto 0 0;transform:translateX(-102%);transition:transform .2s;width:min(300px,86vw);padding-top:env(safe-area-inset-top,0px)}
+  .side.open{transform:none}
+  .scrim.on{display:block;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:20}
+  .menubtn{display:grid}
+  .members{display:none}
+}
+@media (prefers-reduced-motion:reduce){.side{transition:none}.dots i{animation:none}}
+</style>
+</head>
+<body>
+
+<!-- 로그인 -->
+<section id="login">
+  <form class="card" id="loginForm" autocomplete="off">
+    <h1 class="brand">역사톡</h1>
+    <p class="tagline">역사 속 인물에게 직접 묻고, 우리 반과 함께 배워요.</p>
+    <div class="seg" role="group" aria-label="로그인 유형">
+      <button type="button" id="tabStudent" aria-pressed="true">학생</button>
+      <button type="button" id="tabTeacher" aria-pressed="false">교직원</button>
+    </div>
+    <label class="field"><span>이름</span><input id="loginName" placeholder="예: 김하늘"></label>
+    <label class="field"><span>비밀번호</span><input id="loginPw" type="password" placeholder="프로토타입에서는 아무거나 괜찮아요"></label>
+    <button class="btn full" type="submit" id="authSubmit">로그인</button>
+    <button class="btn ghost full" type="button" id="authToggle" style="margin-top:8px">처음이신가요? 회원가입</button>
+    <p class="hint" id="authHint">시연용 계정은 이 브라우저에만 저장됩니다. 실제 보안이 필요한 서비스에는 Firebase 인증 연결이 필요합니다.</p>
+  </form>
+</section>
+
+<!-- 앱 -->
+<div id="app" hidden>
+  <aside class="side" id="side">
+    <div class="me">
+      <button class="who" id="meBtn" aria-label="내 프로필 열기"></button>
+      <button class="iconbtn" id="logoutBtn" aria-label="로그아웃" title="로그아웃"></button>
+    </div>
+    <div class="side-scroll">
+      <div class="sec">역사 인물</div>
+      <div id="figList"></div>
+      <div class="sec">우리 반 방</div>
+      <div id="roomList"></div>
+      <div id="roomAction"></div>
+    </div>
+  </aside>
+  <div class="scrim" id="scrim"></div>
+
+  <section class="main">
+    <header class="head" id="head"></header>
+    <div class="notice" id="notice">
+      <p>역사 인물 대화는 준비된 시나리오를 바탕으로 작동합니다. 학급 채팅의 계정·방·승인 기능은 현재 브라우저 내 시연용이며, 실제 여러 기기 간 동기화와 안전한 인증에는 Firebase 연결이 필요합니다. 공유한 자료의 출처와 내용은 직접 확인해 주세요.</p>
+      <button id="noticeClose">닫기</button>
+    </div>
+    <div class="toolsbar" id="toolsbar" hidden></div>
+    <div class="noticebar" id="pinnedNotice" hidden><strong>📌 공지</strong><span id="pinnedText"></span><button class="btn ghost small" id="editNoticeBtn">관리</button></div>
+    <div class="feed" id="feed"></div>
+    <div class="chips" id="chips"></div>
+    <div class="composer">
+      <div class="box">
+        <button class="iconbtn" id="photoBtn" aria-label="사진 첨부" title="사진 첨부">＋</button>
+        <textarea id="input" rows="1" aria-label="메시지 입력"></textarea>
+        <button class="send" id="sendBtn" aria-label="보내기"></button>
+      </div>
+    </div>
+  </section>
+</div>
+
+<input id="imagePicker" type="file" accept="image/*" hidden>
+<div class="overlay" id="modal" hidden></div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(function(){
+"use strict";
+var $=function(s){return document.querySelector(s)};
+function h(tag,attrs){
+  var e=document.createElement(tag);
+  attrs=attrs||{};
+  Object.keys(attrs).forEach(function(k){
+    var v=attrs[k];
+    if(v===false||v==null)return;
+    if(k==="class")e.className=v;
+    else if(k.indexOf("on")===0)e.addEventListener(k.slice(2),v);
+    else e.setAttribute(k,v===true?"":v);
+  });
+  for(var i=2;i<arguments.length;i++){
+    var kids=[].concat(arguments[i]);
+    kids.forEach(function(k){
+      if(k==null||k===false)return;
+      e.append(k.nodeType?k:document.createTextNode(k));
+    });
+  }
+  return e;
+}
+var ICON={
+  lock:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>',
+  send:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4z"/></svg>',
+  plus:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+  menu:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>',
+  close:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>',
+  out:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5M21 12H9"/></svg>'
+};
+function icon(name,cls){var s=h("span",{class:cls||""});s.innerHTML=ICON[name];s.style.display="inline-flex";return s}
+
+/* ---------- 출처(예시) ---------- */
+function mk(org,url){return function(t){return {t:t,org:org,url:url}}}
+var E=mk("한국민족문화대백과사전","https://encykorea.aks.ac.kr");
+var SIL=mk("조선왕조실록 (국사편찬위원회)","https://sillok.history.go.kr");
+var KHS=mk("국가유산청","https://www.khs.go.kr");
+var HG=mk("국립한글박물관","https://www.hangeul.go.kr");
+var I815=mk("독립기념관","https://www.i815.or.kr");
+var ITKC=mk("한국고전종합DB (한국고전번역원)","https://db.itkc.or.kr");
+var MUS=mk("국립중앙박물관","https://www.museum.go.kr");
+
+/* ---------- 역사 인물 데이터 ---------- */
+var FIGS=[
+{
+  id:"yi",name:"이순신",color:"#2F4F6F",kind:"figure",
+  role:"조선의 무신, 삼도수군통제사",
+  born:"1545년 4월 28일 (음력 3월 8일)",died:"1598년 12월 16일 (음력 11월 19일)",
+  likes:"활쏘기, 일기 쓰기",
+  traits:"임진왜란 때 바다에서 나라를 지킨 장수. 준비를 철저히 하고 원칙을 지키는 지휘관으로 알려져 있어요.",
+  refuse:"이 자리는 배움의 자리요. 그런 이야기에는 답하지 않겠소. 나라를 지킨 일이나 그 시절 이야기를 물어보시오.",
+  fallback:"그 일은 내가 정확히 아는 바가 적어 함부로 말하기 어렵소. 아래 자료를 함께 살펴보시오.",
+  fallbackSrc:[E("이순신"),KHS("난중일기")],
+  chips:["거북선은 어떤 배였나요?","명량에서 어떻게 이겼나요?","난중일기가 뭐예요?"],
+  topics:[
+    {k:["안녕","누구","자기소개","반갑"],t:"나는 삼도수군통제사 이순신이오. 임진년 바다에서 있었던 일을 물으면 아는 대로 답하겠소.",s:[E("이순신")]},
+    {k:["거북선"],t:"거북선은 지붕을 덮어 적의 화살과 조총으로부터 군사를 지키고, 앞장서 적진을 흔들던 돌격선이오. 임진년 사천 해전 등에서 쓰였다고 기록되어 있소.",s:[E("거북선"),E("사천해전")]},
+    {k:["한산","학익진"],t:"1592년 7월 한산도 앞바다에서 학이 날개를 펼친 모양의 진, 학익진으로 적선을 둘러싸 크게 이겼소.",s:[E("한산도대첩"),E("학익진")]},
+    {k:["명량","울돌목","13척","열세"],t:"1597년 9월 명량에서 열세 척 남짓한 배로 백여 척이 넘는 적선을 맞아 싸웠소. 물살이 거센 울돌목의 지형을 이용하였소.",s:[E("명량대첩"),E("이순신")]},
+    {k:["난중일기","일기"],t:"전쟁 중 진중에서 쓴 일기요. 날씨와 군사 일, 내 마음까지 적어 두었소. 훗날 유네스코 세계기록유산이 되었다 하오.",s:[KHS("난중일기"),E("난중일기")]},
+    {k:["노량","죽음","전사","돌아가"],t:"1598년 노량 앞바다에서 마지막 싸움을 하였소. 싸움이 급하니 내 죽음을 알리지 말라 이르셨다고 전해지오.",s:[E("노량해전"),E("이순신")]},
+    {k:["좋아하","취미"],t:"활쏘기를 자주 하였소. 난중일기에도 활을 쏜 날이 여러 번 적혀 있소.",s:[E("이순신"),KHS("난중일기")]}
+  ]
+},
+{
+  id:"sj",name:"세종대왕",color:"#8A5A2B",kind:"figure",
+  role:"조선의 제4대 임금",
+  born:"1397년 5월 15일 (음력 4월 10일)",died:"1450년 3월 30일 (음력 2월 17일)",
+  likes:"책 읽기, 음악",
+  traits:"백성을 위한 정치를 중시한 임금. 훈민정음을 만들었고, 과학과 농업, 음악 등 여러 분야를 발전시켰어요.",
+  refuse:"학문을 나누는 자리에서 그런 말은 삼가야 하느니라. 답하지 않겠노라. 우리 글이나 과학 이야기라면 기꺼이 답하겠노라.",
+  fallback:"그 일은 짐이 정확히 알지 못하니 함부로 말할 수 없느니라. 아래 자료를 함께 살펴보아라.",
+  fallbackSrc:[E("세종"),SIL("세종실록")],
+  chips:["한글을 왜 만드셨어요?","측우기는 뭐예요?","집현전은 무슨 곳이었나요?"],
+  topics:[
+    {k:["안녕","누구","자기소개","반갑"],t:"짐은 조선의 넷째 임금 세종이니라. 백성을 위한 일이라면 무엇이든 물어보아라.",s:[E("세종")]},
+    {k:["한글","훈민정음","글자"],t:"백성에게 말은 있어도 글자가 없어 뜻을 펴지 못하는 것이 딱하여, 1443년에 훈민정음 스물여덟 자를 만들었노라. 1446년에 세상에 널리 알렸느니라.",s:[HG("훈민정음"),E("훈민정음"),SIL("세종실록")]},
+    {k:["집현전"],t:"집현전은 젊은 학자들을 모아 책을 펴내고 나라의 일을 연구하게 한 기관이니라. 훈민정음을 풀이한 책을 만드는 데에도 학자들이 함께 애썼느니라.",s:[E("집현전")]},
+    {k:["측우기","자격루","과학","해시계","장영실"],t:"비가 얼마나 내렸는지 재는 측우기를 1441년에 만들었노라. 농사에 큰 도움이 되었느니라. 장영실 같은 인재와 함께 자격루라는 물시계도 만들었노라.",s:[E("측우기"),E("자격루")]},
+    {k:["농사","농사직설"],t:"우리 땅에 맞는 농사법을 정리하여 농사직설을 펴냈노라. 백성이 배부르게 지내야 나라가 튼튼하느니라.",s:[E("농사직설")]},
+    {k:["영토","국경","4군","6진","사군","육진"],t:"북쪽 국경에 4군과 6진을 두어 압록강과 두만강 일대를 지키게 하였노라.",s:[E("4군6진")]},
+    {k:["좋아하","취미","독서","책"],t:"책 읽기를 몹시 좋아하였느니라. 몸이 편치 않을 때에도 책을 놓지 않아, 책을 치우게 하였다는 이야기가 실록에 전하노라.",s:[SIL("세종실록"),E("세종")]}
+  ]
+},
+{
+  id:"yg",name:"유관순",color:"#7A3E48",kind:"figure",
+  role:"이화학당 학생, 독립운동가",
+  born:"1902년 12월 16일",died:"1920년 9월 28일",
+  likes:"전해지는 기록이 많지 않아 확인이 필요해요",
+  traits:"이화학당에서 공부하던 학생으로 1919년 아우내 장터 만세 운동에 앞장섰어요. 서대문형무소에서 만 열일곱 살에 순국했어요.",
+  refuse:"그 질문에는 답하지 않겠습니다. 역사와 배움에 관한 이야기를 해 주세요.",
+  fallback:"그 부분은 제가 정확히 알지 못해서 말씀드리기 어렵습니다. 아래 자료를 함께 확인해 주세요.",
+  fallbackSrc:[E("유관순"),I815("유관순")],
+  chips:["아우내 장터에서 무슨 일이 있었나요?","이화학당은 어떤 학교였나요?","감옥에서는 어떻게 지냈나요?"],
+  topics:[
+    {k:["안녕","누구","자기소개","반갑"],t:"저는 유관순입니다. 이화학당에서 공부하던 학생이었어요. 1919년 만세 운동에 대해 궁금한 것을 물어보세요.",s:[E("유관순")]},
+    {k:["3.1","삼일","만세","독립운동"],t:"1919년 3월 1일 서울에서 독립 만세 운동이 시작되어 전국으로 퍼졌습니다. 저도 서울에서 만세 시위에 참여했어요.",s:[E("3·1운동"),I815("3·1운동")]},
+    {k:["아우내","천안","병천","장터"],t:"학교가 문을 닫아 고향 천안으로 돌아왔고, 1919년 4월 1일 아우내 장터에서 사람들과 함께 독립 만세를 외쳤습니다. 이 일로 많은 분이 희생되었고, 저의 부모님도 그때 돌아가셨습니다.",s:[E("아우내 독립만세운동"),I815("유관순")]},
+    {k:["이화","학당","학교"],t:"이화학당은 선교사가 세운 여학교로, 저는 그곳에서 공부했습니다.",s:[E("이화학당")]},
+    {k:["감옥","형무소","서대문","순국","옥중"],t:"체포되어 서대문형무소에 갇혔지만 감옥 안에서도 독립 만세를 외쳤습니다. 1920년 9월 28일, 만 열일곱의 나이로 순국했습니다.",s:[E("유관순"),I815("유관순")]},
+    {k:["좋아하","취미"],t:"제가 무엇을 좋아했는지는 전해지는 기록이 많지 않아 확실하게 말씀드리기 어렵습니다.",s:[E("유관순")]}
+  ]
+},
+{
+  id:"jy",name:"정약용",color:"#4C6B3F",kind:"figure",
+  role:"조선 후기의 실학자",
+  born:"1762년 8월 5일 (음력 6월 16일)",died:"1836년 4월 7일 (음력 2월 22일)",
+  likes:"책 읽고 글 쓰기, 시 짓기",
+  traits:"호는 다산. 백성의 살림에 실제로 보탬이 되는 학문을 연구한 실학자로, 강진 유배 중에도 많은 책을 남겼어요.",
+  refuse:"학문하는 자리에 어울리지 않는 말이오. 답하지 않겠소이다. 실학이나 그 시대 이야기를 물으시오.",
+  fallback:"그 일은 내가 정확히 알지 못하여 함부로 말할 수 없소이다. 아래 자료를 함께 살펴보시오.",
+  fallbackSrc:[E("정약용"),ITKC("다산시문집")],
+  chips:["거중기는 어떻게 쓰였나요?","목민심서는 어떤 책인가요?","유배 생활은 어땠나요?"],
+  topics:[
+    {k:["안녕","누구","자기소개","반갑"],t:"나는 다산 정약용이오. 백성을 이롭게 하는 학문을 평생 닦았소이다.",s:[E("정약용")]},
+    {k:["거중기","화성","수원"],t:"수원 화성을 지을 때 무거운 돌을 적은 힘으로 들어 올리는 거중기를 설계하였소. 서양 책 기기도설을 참고하여 도르래의 원리를 이용한 것이오.",s:[E("거중기"),E("수원화성")]},
+    {k:["목민심서"],t:"목민심서는 고을을 다스리는 관리가 어떤 마음가짐과 방법으로 백성을 대해야 하는지 쓴 책이오. 유배 중에 썼으며 1818년에 완성하였소이다.",s:[E("목민심서"),ITKC("목민심서")]},
+    {k:["유배","강진"],t:"1801년부터 강진에서 십여 년을 넘게 유배 생활을 하였소. 그 시간에 학문에 힘써 많은 책을 남겼소이다.",s:[E("정약용"),E("강진 유배")]},
+    {k:["실학"],t:"실학은 나라와 백성의 살림에 실제로 보탬이 되는 학문이오. 나는 토지, 세금, 행정을 바로잡는 방법을 연구하였소이다.",s:[E("실학"),E("정약용")]},
+    {k:["좋아하","취미"],t:"글 읽고 쓰는 일을 즐겼소이다. 유배 중에도 많은 책을 지었소.",s:[E("정약용"),ITKC("다산시문집")]}
+  ]
+}
+];
+var BLOCK=["야동","19금","성관계","섹스","시발","씨발","병신","개새","꺼져"];
+
+/* ---------- 상태 ---------- */
+var profiles,FIG,rooms,chats,cur,role="student",typingKey=null,me,accounts={},registerMode=false,pendingJoins=[],notes=[],pinnedNotices={},currentReply=null,editingMessage=null;
+
+function init(){
+  profiles={};FIG={};
+  FIGS.forEach(function(f){
+    profiles[f.id]=f;FIG[f.id]=f;
+  });
+  var users=[
+    {id:"t1",name:"박서연",kind:"teacher",color:"#3F6E8C",role:"3학년 2반 담임, 역사 담당",birthday:"비공개",likes:"역사 답사, 박물관 관람",traits:"학생들이 역사를 재미있게 느끼도록 돕는 선생님"},
+    {id:"s1",name:"이준호",kind:"student",color:"#B0652E",role:"3학년 2반 학생",birthday:"5월 21일",likes:"축구, 만화책",traits:"궁금한 건 바로 물어보는 편"},
+    {id:"s2",name:"최유나",kind:"student",color:"#7C5AA6",role:"3학년 2반 학생",birthday:"11월 3일",likes:"그림 그리기",traits:"역사 만화를 좋아해요"},
+    {id:"s3",name:"한지민",kind:"student",color:"#3F8A6B",role:"3학년 2반 학생",birthday:"8월 9일",likes:"독서",traits:"조용하지만 발표는 꼼꼼하게 준비해요"}
+  ];
+  users.forEach(function(u){profiles[u.id]=u});
+  rooms=[
+    {id:"r1",name:"3학년 2반 역사 수업",code:"HIS204",owner:"t1",members:["t1","s1","s2","s3","me"],pending:[],kicked:[]},
+    {id:"r2",name:"조선 시대 모둠 토론",code:"JOS118",owner:"t1",members:["s1","s2","me"],pending:[],kicked:[]}
+  ];
+  pendingJoins=[];notes=[];pinnedNotices={};currentReply=null;editingMessage=null;
+  var now=Date.now();
+  function ago(m){return new Date(now-m*60000)}
+  chats={};
+  FIGS.forEach(function(f){chats["f:"+f.id]=[{from:f.id,text:f.topics[0].t,sources:f.topics[0].s,topicIndex:0,followups:f.chips,time:ago(1)}]});
+  chats["r:r1"]=[
+    {from:"t1",text:"여러분, 오늘 숙제예요. 이순신 장군에게 궁금한 점을 세 가지 물어보고, 답변 아래 참고 자료도 꼭 확인해 보세요.",time:ago(52)},
+    {from:"s1",text:"선생님, 거북선에 대해 물어봐도 되나요?",time:ago(48)},
+    {from:"t1",text:"좋아요. 답변이 정확한지 참고 자료로 한 번 더 확인하는 것도 잊지 마세요.",time:ago(46)},
+    {from:"s2",text:"저는 세종대왕님께 한글을 만든 이유를 물어볼래요!",time:ago(40)}
+  ];
+  chats["r:r2"]=[
+    {from:"s1",text:"우리 모둠은 정약용의 거중기를 조사해 볼까?",time:ago(25)},
+    {from:"s2",text:"좋아! 나는 화성 건설 쪽을 맡을게.",time:ago(22)}
+  ];
+  cur="f:yi";typingKey=null;
+}
+
+/* ---------- 공통 조각 ---------- */
+function fmt(d){return d.toLocaleTimeString("ko-KR",{hour:"numeric",minute:"2-digit"})}
+function avatar(p,size,onclick){
+  var st="width:"+size+"px;height:"+size+"px;font-size:"+Math.round(size*.42)+"px;";
+  if(p.img)st+='background-image:url("'+p.img+'");';else st+="background-color:"+p.color+";";
+  var el=h(onclick?"button":"div",{class:"av",style:st,"aria-label":onclick?(p.name+" 프로필 보기"):false,onclick:onclick||false},p.img?"":p.name.charAt(0));
+  return el;
+}
+function toast(msg){
+  var t=$("#toast");t.textContent=msg;t.hidden=false;
+  clearTimeout(toast._t);toast._t=setTimeout(function(){t.hidden=true},2600);
+}
+function closeSide(){$("#side").classList.remove("open");$("#scrim").classList.remove("on")}
+
+/* ---------- 사이드바 ---------- */
+function renderSide(){
+  var mb=$("#meBtn");mb.replaceChildren(
+    avatar(profiles.me,40),
+    h("span",{style:"min-width:0"},
+      h("div",{class:"nm"},profiles.me.name),
+      h("div",{class:"sub"},profiles.me.kind==="teacher"?"교직원":"학생"))
+  );
+  var fl=$("#figList");fl.replaceChildren();
+  FIGS.forEach(function(f){
+    fl.append(h("button",{class:"item"+(cur==="f:"+f.id?" active":""),onclick:function(){go("f:"+f.id)}},
+      avatar(f,36),
+      h("span",{class:"t"},h("b",{},f.name,h("span",{class:"tag ai"},"시나리오")),h("small",{},f.role))));
+  });
+  var rl=$("#roomList");rl.replaceChildren();
+  rooms.forEach(function(r){
+    rl.append(h("button",{class:"item"+(cur==="r:"+r.id?" active":""),onclick:function(){go("r:"+r.id)}},
+      h("span",{class:"roomdot"},r.name.charAt(0)),
+      h("span",{class:"t"},h("b",{},r.name),h("small",{},"참여자 "+r.members.length+"명"))));
+  });
+  var ra=$("#roomAction");ra.replaceChildren();
+  if(profiles.me.kind==="teacher"){
+    ra.append(h("button",{class:"addroom",onclick:openNewRoom},icon("plus"),"방 만들기"));
+  }else{
+    ra.append(h("button",{class:"addroom",onclick:openJoinRoom},icon("plus"),"방 코드 입력"),
+      h("button",{class:"lockhint",onclick:function(){toast("방 만들기와 학생 초대 승인은 선생님 권한이에요.")}},
+      icon("lock"),h("span",{},"방 코드를 입력하면 선생님 승인 후 입장할 수 있어요.")));
+  }
+}
+
+/* ---------- 본문 ---------- */
+function go(key){cur=key;closeSide();renderSide();renderMain();}
+function curRoom(){return rooms.filter(function(r){return "r:"+r.id===cur})[0]}
+
+function renderHead(){
+  var hd=$("#head");hd.replaceChildren();
+  hd.append(h("button",{class:"iconbtn menubtn","aria-label":"메뉴 열기",onclick:function(){$("#side").classList.add("open");$("#scrim").classList.add("on")}},icon("menu")));
+  if(cur.indexOf("f:")===0){
+    var f=FIG[cur.slice(2)];
+    hd.append(avatar(f,36,function(){openProfile(f.id)}),
+      h("div",{class:"grow"},h("h1",{class:"serif"},f.name,h("span",{class:"tag ai"},"역사 인물 대화")),h("small",{},f.role)),
+      h("button",{class:"btn ghost small",onclick:function(){openProfile(f.id)}},"프로필 보기"));
+  }else{
+    var r=curRoom();
+    hd.append(h("div",{class:"grow"},h("h1",{},r.name),h("small",{},"학급 채팅 · 참여자 "+r.members.length+"명")),
+      h("div",{class:"members"},r.members.map(function(id){return profiles[id]?avatar(profiles[id],30,function(){openProfile(id)}):null})));
+  }
+}
+
+function sourcesEl(m){
+  return h("div",{class:"refs"},
+    h("div",{class:"refs-title"},"참고 자료 · 직접 확인 권장"),
+    h("ul",{},(m.sources||[]).map(function(s){
+      return h("li",{},h("a",{href:s.url,target:"_blank",rel:"noopener noreferrer"},s.t),h("span",{},s.org));
+    })),
+    h("div",{class:"source-note"},"현재 프로토타입은 기관 홈페이지로 연결할 수 있습니다. 개별 사료·문서의 정확한 위치와 답변의 근거 여부는 별도로 확인해야 합니다."));
+}
+function msgEl(m){
+  var p=profiles[m.from]||profiles.me,isFig=p.kind==="figure";
+  var body=h("div",{class:"body"},
+      h("div",{class:"meta"},
+        h("button",{class:"name"+(isFig?" serif":""),onclick:function(){openProfile(m.from)}},p.name),
+        isFig&&h("span",{class:"tag ai"},"시나리오"),
+        p.kind==="teacher"&&h("span",{class:"tag teacher"},"선생님"),
+        h("time",{},fmt(m.time))),
+      h("div",{class:"text"+(isFig?" fig":"")},m.text),
+      m.image&&h("img",{class:"attachimg",src:m.image,alt:"공유된 사진"}),
+      m.url&&h("div",{class:"shared-card"},h("strong",{},"🔗 링크"),h("div",{},h("a",{href:m.url,target:"_blank",rel:"noopener noreferrer"},m.url))),
+      m.sharedHistory&&h("div",{class:"shared-card"},h("strong",{},"📚 역사 인물 대화 공유"),h("div",{class:"smallnote"},m.sharedHistory.figure+"과 나눈 대화"),h("div",{style:"white-space:pre-wrap;margin-top:6px"},m.sharedHistory.content)),
+      m.sources&&sourcesEl(m),
+      m.replyTo&&h("div",{class:"shared-card smallnote"},"↪ 답장: "+m.replyTo),
+      m.reactions&&h("div",{class:"smallnote",style:"margin-top:5px"},Object.keys(m.reactions).map(function(k){return k+" "+m.reactions[k]}).join(" · ")),
+      !isFig&&h("div",{class:"smallnote",style:"margin-top:3px"},"읽음 · "+Math.max(0,(curRoom()?curRoom().members.length:1)-1)+"명"),
+      m.locked&&h("div",{class:"lock"},icon("lock"),"학습에 적합하지 않은 표현이 포함되어 답변을 제공하지 않았어요."));
+  if(!isFig){
+    var actions=h("div",{class:"msgtools"},
+      h("button",{onclick:function(){currentReply=m;toast("답장할 내용을 입력해 주세요.");$("#input").focus()}},"↩ 답장"),
+      h("button",{onclick:function(){m.reactions=m.reactions||{};m.reactions["👍"]=(m.reactions["👍"]||0)+1;renderMain()}},"👍"),
+      h("button",{onclick:function(){m.reactions=m.reactions||{};m.reactions["❤️"]=(m.reactions["❤️"]||0)+1;renderMain()}},"❤️"),
+      h("button",{onclick:function(){GenCopy(m.text)}},"복사"),
+      h("button",{onclick:function(){reportMessage(m)}},"신고"));
+    if(m.from==="me")actions.append(h("button",{onclick:function(){editMessage(m)}},"수정"),h("button",{onclick:function(){deleteMessage(m)}},"삭제"));
+    body.append(actions);
+  }
+  if(isFig&&m.followups&&m.followups.length){
+    body.append(h("div",{class:"followup-label"},"이어서 물어보기"),
+      h("div",{class:"chips",style:"padding:0;"},m.followups.map(function(q){return h("button",{onclick:function(){send(q)}},q)})));
+  }
+  return h("div",{class:"msg"},avatar(p,40,function(){openProfile(m.from)}),body);
+}
+function typingEl(f){
+  return h("div",{class:"msg"},avatar(f,40),h("div",{class:"body"},
+    h("div",{class:"meta"},h("span",{class:"name serif"},f.name),h("span",{class:"tag ai"},"시나리오")),
+    h("div",{class:"dots","aria-label":"답변을 쓰는 중"},h("i"),h("i"),h("i"))));
+}
+function renderMain(){
+  renderHead();
+  var feed=$("#feed");feed.replaceChildren();
+  var msgs=chats[cur]||[];
+  var room=curRoom(), tools=$("#toolsbar"), pn=$("#pinnedNotice");
+  tools.replaceChildren();tools.hidden=!room;
+  pn.hidden=!room||!pinnedNotices[room.id];
+  if(room){
+    if(pinnedNotices[room.id])$("#pinnedText").textContent=pinnedNotices[room.id];
+    tools.append(h("button",{onclick:searchChat},"🔎 검색"),h("button",{onclick:addPhoto},"🖼 사진"),h("button",{onclick:shareHistory},"📚 대화 공유"),h("button",{onclick:openNotebook},"📝 탐구 노트"),h("button",{onclick:openSourceCard},"📖 출처 카드"),h("button",{onclick:openQuizSite},"🧠 퀴즈 풀기 ↗"),h("button",{onclick:exportChat},"⬇ 내보내기"),h("button",{onclick:roomSettings},"⚙ 방 관리"));
+    if(profiles.me.kind==="teacher")tools.append(h("button",{onclick:editPinnedNotice},"📌 공지 고정"),h("button",{onclick:inviteByCode},"👤 학생 초대"));
+  }
+  if(!msgs.length)feed.append(h("p",{class:"empty"},"아직 메시지가 없어요. 첫 인사를 남겨 보세요."));
+  msgs.forEach(function(m){feed.append(msgEl(m))});
+  var isFig=cur.indexOf("f:")===0;
+  if(isFig&&typingKey===cur)feed.append(typingEl(FIG[cur.slice(2)]));
+  if(room){
+    var codeLine=h("div",{class:"room-code"},"방 코드: "+room.code+"  ");
+    codeLine.append(h("button",{class:"btn ghost small",onclick:function(){GenCopy(room.code);toast("방 코드를 복사했어요.")}},"코드 복사"));
+    feed.prepend(codeLine);
+    if(profiles.me.kind==="teacher"&&room.pending&&room.pending.length){
+      var req=h("div",{class:"shared-card"},h("strong",{},"참여 승인 대기 ("+room.pending.length+")"));
+      room.pending.forEach(function(uid){req.append(h("div",{style:"display:flex;align-items:center;gap:8px;margin-top:7px"},h("span",{style:"flex:1"},(profiles[uid]||{name:uid}).name),h("button",{class:"btn small",onclick:function(){approveJoin(room,uid,true)}},"허락"),h("button",{class:"btn ghost small",onclick:function(){approveJoin(room,uid,false)}},"거절")))});
+      feed.prepend(req);
+    }
+  }
+  feed.scrollTop=feed.scrollHeight;
+  var chips=$("#chips");chips.replaceChildren();
+  if(isFig){
+    var last=msgs.slice().reverse().filter(function(m){return m.from===FIG[cur.slice(2)].id&&m.followups&&m.followups.length})[0];
+    var prompts=last?last.followups:FIG[cur.slice(2)].chips;
+    chips.append(h("span",{class:"followup-label",style:"width:100%;margin:0"},last?"대화를 이어 가 보세요":"추천 질문"));
+    prompts.forEach(function(c){chips.append(h("button",{onclick:function(){send(c)}},c))});
+  }
+  $("#input").placeholder=isFig?(FIG[cur.slice(2)].name+"에게 물어보기"):(curRoom().name+"에 메시지 보내기");
+}
+
+/* ---------- 시나리오형 답변 처리 (API 없이 동작) ---------- */
+function normalizeQuestion(q){
+  return (q||"").toLowerCase().replace(/[\s.,!?。，！？·、:;“”‘’()\[\]{}]/g,"");
+}
+function getLastFigureTopic(key,fig){
+  var arr=chats[key]||[];
+  for(var i=arr.length-1;i>=0;i--){
+    if(arr[i].from===fig.id&&typeof arr[i].topicIndex==="number")return arr[i].topicIndex;
+  }
+  return -1;
+}
+var FOLLOWUP_PROMPTS={
+  yi:{1:["거북선과 판옥선은 무엇이 달랐나요?","거북선은 어떤 전투에서 활용됐나요?","당시 기록에서 거북선을 확인할 수 있나요?"],2:["학익진은 어떤 전술인가요?","한산도 대첩의 결과는 무엇이었나요?","명량 해전과는 어떻게 다른가요?"],3:["울돌목의 물살은 전투에 어떤 영향을 주었나요?","명량 해전의 결과는 무엇이었나요?","이 전투를 기록한 자료가 있나요?"],4:["난중일기는 왜 중요한 사료인가요?","난중일기에는 어떤 내용이 담겼나요?","원문을 확인할 수 있는 곳은 어디인가요?"],5:["노량 해전은 왜 중요한가요?","임진왜란은 언제 끝났나요?","노량 해전에 관한 기록을 확인하고 싶어요."]},
+  sj:{1:["훈민정음은 언제 반포됐나요?","훈민정음 해례본은 무엇인가요?","백성이 글자를 배우기 쉬웠던 이유는 무엇인가요?"],2:["집현전은 어떤 일을 했나요?","집현전 학자들은 훈민정음 창제에 어떻게 참여했나요?","집현전 관련 기록을 확인하고 싶어요."],3:["측우기는 어떻게 비의 양을 쟀나요?","자격루는 어떻게 작동했나요?","당시 과학 기술 자료를 확인하고 싶어요."],4:["농사직설은 왜 편찬됐나요?","농사직설은 어떤 농사법을 다뤘나요?","농사직설 원문을 볼 수 있나요?"],5:["4군 6진은 어디에 설치됐나요?","북방 개척의 목적은 무엇이었나요?","관련 기록을 확인하고 싶어요."]},
+  yg:{1:["3·1 운동은 어떻게 전국으로 퍼졌나요?","유관순은 어떤 활동을 했나요?","당시 독립운동 기록을 확인하고 싶어요."],2:["아우내 만세 운동은 언제 일어났나요?","그 사건의 역사적 의미는 무엇인가요?","관련 기록과 전시 자료를 확인하고 싶어요."],3:["이화학당은 당시 어떤 교육을 했나요?","학생들은 독립운동에 어떻게 참여했나요?","이화학당 관련 자료를 확인하고 싶어요."],4:["서대문형무소에서 어떤 일이 있었나요?","유관순의 옥중 활동은 어떤 자료에 기록됐나요?","독립기념관 자료를 확인하고 싶어요."]},
+  jy:{1:["거중기는 어떤 원리로 작동했나요?","수원 화성 건설에서 어떤 역할을 했나요?","거중기 관련 유물을 확인하고 싶어요."],2:["목민심서에서 강조한 관리의 책임은 무엇인가요?","목민심서는 언제 완성됐나요?","목민심서 원문을 볼 수 있나요?"],3:["정약용은 왜 강진에 유배됐나요?","유배 기간에 어떤 책을 썼나요?","정약용의 저술을 확인하고 싶어요."],4:["실학은 성리학과 어떻게 달랐나요?","정약용은 어떤 사회 개혁을 제안했나요?","관련 고전 자료를 확인하고 싶어요."]}
+};
+function followupsFor(fig,index){return (FOLLOWUP_PROMPTS[fig.id]&&FOLLOWUP_PROMPTS[fig.id][index])||fig.chips;}
+function contextualAnswer(fig,q,previousIndex){
+  var s=normalizeQuestion(q);
+  if(previousIndex<0)return null;
+  var why=/왜|이유|까닭|목적|어째서/.test(s),how=/어떻게|방법|원리|과정/.test(s),difference=/차이|다르|비교/.test(s),source=/사료|자료|기록|원문|출처|어디서/.test(s);
+  if(!(why||how||difference||source))return null;
+  var canned={
+    "yi:1":{
+      why:{text:"거북선의 구조와 전술적 목적은 관련 기록과 연구 자료를 대조해 설명해야 하오. 현재 등록된 답변만으로 특정 구조가 만들어진 이유를 하나로 단정하지 않겠소.",sources:[E("거북선"),E("이순신")]},
+      how:{text:"거북선의 실제 운용 방식은 전투 기록과 후대의 복원 자료를 구분해 살펴보는 것이 중요하오. 복원 모형의 모습만으로 당시의 모든 세부 구조를 확정할 수는 없소.",sources:[E("거북선"),KHS("거북선 관련 자료")]},
+      difference:{text:"판옥선과 거북선의 차이는 구조와 전술적 역할을 나누어 비교해야 하오. 정확한 세부 사항은 각 선박에 관한 자료를 대조해 확인하시오.",sources:[E("거북선"),E("판옥선")]},
+      source:{text:"거북선에 관한 설명은 백과사전과 국가유산 관련 자료를 함께 확인하는 것이 좋소. 현재 링크는 기관 홈페이지로 연결될 수 있으니 자료 제목을 검색해 실제 항목을 확인하시오.",sources:[E("거북선"),KHS("거북선 관련 자료")]}
+    },
+    "sj:1":{
+      why:{text:"훈민정음 창제의 취지는 백성이 문자 생활에서 겪는 어려움을 덜고 뜻을 표현하도록 하는 데 있었다고 훈민정음 서문에서 설명하오.",sources:[HG("훈민정음"),SIL("세종실록")]},
+      how:{text:"훈민정음은 1443년에 창제되고 1446년에 반포되었소. 창제 원리와 글자의 사용법은 훈민정음 해례본을 통해 살펴보는 것이 좋소.",sources:[HG("훈민정음"),E("훈민정음") ]},
+      difference:{text:"훈민정음과 기존 한자 중심의 문자 생활은 문자 체계와 사용 목적을 나누어 비교해야 하오. 실제 문헌을 함께 읽으며 차이를 확인해 보시오.",sources:[HG("훈민정음"),E("훈민정음")]},
+      source:{text:"훈민정음에 관한 설명은 국립한글박물관 자료와 세종실록을 함께 확인하시오. 자료 제목을 검색해 원문과 해설을 구분해 읽는 것이 좋소.",sources:[HG("훈민정음"),SIL("세종실록")]}
+    },
+    "yg:2":{
+      why:{text:"아우내 만세 운동의 배경과 참여 동기는 당시의 3·1 운동 확산 과정, 지역 사회의 상황, 관련 인물 기록을 함께 살펴야 합니다. 단일한 이유로만 설명하지 않는 것이 중요합니다.",sources:[E("아우내 독립만세운동"),I815("유관순")]},
+      how:{text:"아우내 만세 운동의 진행 과정은 날짜와 장소, 참여자, 이후의 재판 기록 등을 나누어 확인해야 합니다. 구체적인 내용은 관련 사료와 기관 자료를 대조해 주세요.",sources:[E("아우내 독립만세운동"),I815("유관순")]},
+      difference:{text:"서울의 3·1 운동과 아우내 만세 운동은 전국적 운동의 흐름 속에서 연결되지만, 장소와 전개 과정은 구분해 살펴봐야 합니다.",sources:[E("3·1운동"),I815("유관순")]},
+      source:{text:"독립기념관과 한국민족문화대백과사전에서 유관순 및 아우내 독립만세운동 관련 항목을 찾아 확인해 주세요. 전시 해설과 당시 기록은 성격이 다를 수 있습니다.",sources:[I815("유관순"),E("아우내 독립만세운동")]}
+    },
+    "jy:1":{
+      why:{text:"거중기는 무거운 물체를 들어 올리는 데 도르래 원리를 활용한 기구로 설명됩니다. 화성 건설에서의 구체적인 사용 방식은 관련 기술 자료와 화성 축성 기록을 함께 확인해야 합니다.",sources:[E("거중기"),E("수원화성")]},
+      how:{text:"거중기의 기본 원리는 도르래를 이용해 힘의 방향과 필요한 힘을 조절하는 것입니다. 실제 장치의 세부 구조와 사용 방식은 복원 설명과 역사 자료를 구분해 확인해 주세요.",sources:[E("거중기"),E("수원화성")]},
+      difference:{text:"거중기와 다른 양중 장치는 구조와 힘을 전달하는 방식으로 비교할 수 있습니다. 역사적 장치의 구체적인 형태는 도설과 관련 유물·복원 자료를 함께 확인해야 합니다.",sources:[E("거중기"),MUS("전통 과학기술 관련 자료")]},
+      source:{text:"거중기와 수원 화성에 관한 백과사전 항목, 화성 관련 공식 자료를 함께 확인해 주세요. 기관 홈페이지 링크에서는 자료 제목으로 검색해야 할 수 있습니다.",sources:[E("거중기"),E("수원화성")]}
+    }
+  };
+  var pack=canned[fig.id+":"+previousIndex];if(!pack)return null;
+  var kind=source?"source":difference?"difference":how?"how":"why";
+  return {text:pack[kind].text,sources:pack[kind].sources,topicIndex:previousIndex,followups:followupsFor(fig,previousIndex)};
+}
+function answer(fig,q,key){
+  var s=normalizeQuestion(q);
+  for(var i=0;i<BLOCK.length;i++){
+    if(s.indexOf(normalizeQuestion(BLOCK[i]))>-1)return {text:fig.refuse,locked:true};
+  }
+  var previousIndex=getLastFigureTopic(key,fig);
+  var best=null,bestLen=0,bestIndex=-1;
+  for(var j=0;j<fig.topics.length;j++){
+    var tp=fig.topics[j];
+    for(var k=0;k<tp.k.length;k++){
+      var kw=normalizeQuestion(tp.k[k]);
+      if(kw&&s.indexOf(kw)>-1&&kw.length>bestLen){best=tp;bestLen=kw.length;bestIndex=j;}
+    }
+  }
+  // 명시적으로 새 주제를 말한 경우에는 키워드 매칭을 우선하고, 주제가 생략된 후속 질문만 직전 맥락으로 처리한다.
+  if(!best){
+    var contextual=contextualAnswer(fig,q,previousIndex);
+    if(contextual)return contextual;
+  }
+  if(best){
+    return {text:best.t,sources:best.s,topicIndex:bestIndex,followups:followupsFor(fig,bestIndex)};
+  }
+  return {text:fig.fallback+"\n\n현재 준비된 시나리오에서 이 질문과 정확히 일치하는 답변을 찾지 못했어요. 비슷한 답을 임의로 만들어 내지 않도록, 아래 자료를 직접 확인하거나 추천 질문을 선택해 주세요.",sources:fig.fallbackSrc,followups:fig.chips};
+}
+function send(text){
+  text=(text||"").trim();if(!text)return;
+  var key=cur;
+  if(!chats[key])chats[key]=[];
+  var msg={from:"me",text:text,time:new Date()};
+  if(currentReply){msg.replyTo=currentReply.text.slice(0,140);currentReply=null;}
+  var urlMatch=text.match(/https?:\/\/[^\s]+/i);if(urlMatch)msg.url=urlMatch[0];
+  if(key.indexOf("r:")===0&&/@[^\s]+/.test(text))msg.mention=true;
+  chats[key].push(msg);
+  if(key.indexOf("f:")===0){
+    var fig=FIG[key.slice(2)];
+    typingKey=key;renderMain();
+    setTimeout(function(){
+      var a=answer(fig,text,key);
+      chats[key].push({from:fig.id,text:a.text,sources:a.sources,locked:a.locked,topicIndex:a.topicIndex,followups:a.followups,time:new Date()});
+      if(typingKey===key)typingKey=null;
+      renderMain();
+    },350);
+  }else renderMain();
+}
+
+/* ---------- 추가 학급 기능(로컬 시연용) ---------- */
+function GenCopy(text){if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(String(text)).catch(function(){});}
+function randomCode(n){var chars="ABCDEFGHJKLMNPQRSTUVWXYZ23456789",out="";for(var i=0;i<n;i++)out+=chars[Math.floor(Math.random()*chars.length)];return out;}
+function makeCode(){var c;do{c=randomCode(6)}while(rooms.some(function(r){return r.code===c}));return c;}
+function makePersonalCode(){return "HT-"+randomCode(6);}
+function activeRoom(){return curRoom();}
+function openJoinRoom(){
+ var inp=h("input",{placeholder:"예: HIS204",maxlength:"12",style:"width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--panel);text-transform:uppercase"});
+ var card=h("div",{class:"pcard"},h("div",{class:"pbody",style:"padding-top:22px"},h("p",{class:"pname",style:"margin-top:0"},"방 코드로 참여 신청"),h("p",{class:"prole"},"코드를 입력하면 선생님에게 승인 요청이 전송됩니다."),h("label",{class:"field"},h("span",{},"채팅방 코드"),inp),h("div",{class:"pactions"},h("button",{class:"btn",onclick:function(){var code=inp.value.trim().toUpperCase(),r=rooms.filter(function(x){return x.code===code})[0];if(!r){toast("이 브라우저에 등록된 방 코드를 찾지 못했어요.");return;}if((r.kicked||[]).indexOf("me")>=0){toast("이 방에서는 퇴장 처리되어 다시 신청할 수 없어요.");return;}if(r.members.indexOf("me")>=0){closeModal();go("r:"+r.id);toast("이미 참여 중인 방이에요.");return;}r.pending=r.pending||[];if(r.pending.indexOf("me")>=0){toast("이미 승인 대기 중이에요.");return;}r.pending.push("me");closeModal();toast("참여 신청을 보냈어요. 선생님의 승인을 기다려 주세요.");renderMain();}},"참여 신청"),h("button",{class:"btn ghost",onclick:closeModal},"취소"))));
+ var m=$("#modal");m.replaceChildren(card);m.hidden=false;inp.focus();
+}
+function approveJoin(room,uid,yes){room.pending=(room.pending||[]).filter(function(x){return x!==uid});if(yes){if(room.members.indexOf(uid)<0)room.members.push(uid);if(!profiles[uid])profiles[uid]={id:uid,name:uid==="me"?me.name:"학생",kind:"student",color:"#5B6C8F",role:"학생",birthday:"",likes:"",traits:""};(chats["r:"+room.id]||(chats["r:"+room.id]=[])).push({from:room.owner||"me",text:(profiles[uid].name||"학생")+"님이 채팅방에 참여했습니다.",time:new Date()});toast("참여를 허락했어요.");}else toast("참여 신청을 거절했어요.");renderSide();renderMain();}
+function inviteByCode(){var r=activeRoom();if(!r||profiles.me.kind!=="teacher"){toast("학생 초대는 선생님만 할 수 있어요.");return;}var inp=h("input",{placeholder:"예: HT-ABC234",style:"width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--panel);text-transform:uppercase"});var card=h("div",{class:"pcard"},h("div",{class:"pbody",style:"padding-top:22px"},h("p",{class:"pname",style:"margin-top:0"},"학생 개인 코드로 초대"),h("p",{class:"prole"},"회원가입 때 발급된 학생 개인 코드를 입력하세요."),h("label",{class:"field"},h("span",{},"개인 코드"),inp),h("div",{class:"pactions"},h("button",{class:"btn",onclick:function(){var code=inp.value.trim().toUpperCase(),found=null;try{var ac=JSON.parse(localStorage.getItem("historiatalk_accounts")||"{}");Object.keys(ac).forEach(function(k){if(ac[k].code===code&&ac[k].role==="student")found=ac[k]})}catch(_){}if(!found){toast("이 브라우저에서 해당 학생 코드를 찾을 수 없어요. 실제 다중 기기 초대에는 Firebase가 필요해요.");return;}var uid="u_"+code.replace(/[^A-Z0-9]/g,"");profiles[uid]={id:uid,name:found.name,kind:"student",color:"#5B6C8F",role:"학생",birthday:"",likes:"",traits:""};if(r.members.indexOf(uid)<0)r.members.push(uid);chats["r:"+r.id].push({from:"me",text:found.name+" 학생을 초대했어요.",time:new Date()});closeModal();renderSide();renderMain();toast("학생을 초대했어요.")}},"초대하기"),h("button",{class:"btn ghost",onclick:closeModal},"취소"))));var m=$("#modal");m.replaceChildren(card);m.hidden=false;inp.focus();}
+function roomSettings(){var r=activeRoom();if(!r)return;var body=h("div",{class:"pbody",style:"padding-top:22px"},h("p",{class:"pname",style:"margin-top:0"},"방 관리"),h("p",{class:"prole"},r.name+" · 방 코드 "+r.code));
+ if(profiles.me.kind!=="teacher"){body.append(h("p",{},"학생은 방 관리 권한이 없습니다."),h("button",{class:"btn ghost",onclick:closeModal},"닫기"));}
+ else{body.append(h("p",{class:"smallnote"},"참여 학생"));r.members.forEach(function(uid){if(uid==="me"||!profiles[uid]||profiles[uid].kind==="teacher")return;body.append(h("div",{style:"display:flex;gap:8px;align-items:center;margin:6px 0"},h("span",{style:"flex:1"},profiles[uid].name),h("button",{class:"btn ghost small",onclick:function(){if(!confirm(profiles[uid].name+" 학생을 강퇴할까요?"))return;r.members=r.members.filter(function(x){return x!==uid});r.kicked=r.kicked||[];r.kicked.push(uid);closeModal();renderSide();renderMain();toast("학생을 강퇴했어요.");}},"강퇴")))});body.append(h("div",{class:"pactions"},h("button",{class:"btn ghost",onclick:function(){GenCopy(r.code);toast("방 코드를 복사했어요.")}},"방 코드 복사"),h("button",{class:"btn ghost",onclick:closeModal},"닫기")));}
+ var card=h("div",{class:"pcard"},body),m=$("#modal");m.replaceChildren(card);m.hidden=false;}
+function editPinnedNotice(){var r=activeRoom();if(!r||profiles.me.kind!=="teacher")return;var ta=h("textarea",{rows:"4",style:"width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--panel)"},pinnedNotices[r.id]||"");var card=h("div",{class:"pcard"},h("div",{class:"pbody",style:"padding-top:22px"},h("p",{class:"pname",style:"margin-top:0"},"공지사항 고정"),h("label",{class:"field"},h("span",{},"공지 내용"),ta),h("div",{class:"pactions"},h("button",{class:"btn",onclick:function(){pinnedNotices[r.id]=ta.value.trim();closeModal();renderMain();toast("공지를 저장했어요.")}},"저장"),h("button",{class:"btn ghost",onclick:closeModal},"취소"))));var m=$("#modal");m.replaceChildren(card);m.hidden=false;}
+function searchChat(){var r=activeRoom();if(!r)return;var inp=h("input",{placeholder:"메시지 검색",style:"width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--panel)"});var results=h("div",{style:"max-height:250px;overflow:auto"});function run(){results.replaceChildren();var q=inp.value.trim().toLowerCase();(chats[cur]||[]).filter(function(m){return q&&m.text.toLowerCase().indexOf(q)>=0}).forEach(function(m){results.append(h("div",{class:"shared-card"},h("strong",{},(profiles[m.from]||{name:m.from}).name),h("div",{},m.text.slice(0,300))))});}inp.addEventListener("input",run);var card=h("div",{class:"pcard"},h("div",{class:"pbody",style:"padding-top:22px"},h("p",{class:"pname",style:"margin-top:0"},"채팅 검색"),inp,results,h("div",{class:"pactions"},h("button",{class:"btn ghost",onclick:closeModal},"닫기"))));var m=$("#modal");m.replaceChildren(card);m.hidden=false;inp.focus();}
+function shareHistory(){var choices=[];FIGS.forEach(function(f){(chats["f:"+f.id]||[]).forEach(function(m){if(m.from==="me"||m.from===f.id)choices.push({f:f,m:m})})});var sel=h("select",{style:"width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--panel)"});choices.slice(-30).forEach(function(x,i){sel.append(h("option",{value:String(i)},x.f.name+" · "+x.m.text.slice(0,55)))});var arr=choices.slice(-30);var card=h("div",{class:"pcard"},h("div",{class:"pbody",style:"padding-top:22px"},h("p",{class:"pname",style:"margin-top:0"},"역사 대화 공유"),h("p",{class:"prole"},"최근 대화 중 공유할 항목을 선택하세요."),sel,h("div",{class:"pactions"},h("button",{class:"btn",onclick:function(){var x=arr[Number(sel.value)];if(!x){toast("공유할 대화가 없어요.");return;}chats[cur].push({from:"me",text:"역사 인물 대화 기록을 공유합니다.",sharedHistory:{figure:x.f.name,content:x.m.text},time:new Date()});closeModal();renderMain();toast("대화를 공유했어요.")}},"채팅방에 공유"),h("button",{class:"btn ghost",onclick:closeModal},"취소"))));var m=$("#modal");m.replaceChildren(card);m.hidden=false;}
+function openNotebook(){var r=activeRoom();if(!r)return;var ta=h("textarea",{rows:"8",style:"width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--panel)",placeholder:"내 질문\n역사 인물의 답변\n확인이 필요한 주장\n확인한 사료와 출처\n새롭게 알게 된 점"},notes.filter(function(n){return n.room===r.id&&n.user==="me"}).map(function(n){return n.text}).join("\n\n---\n\n"));var card=h("div",{class:"pcard"},h("div",{class:"pbody",style:"padding-top:22px"},h("p",{class:"pname",style:"margin-top:0"},"역사 대화 탐구 노트"),h("p",{class:"prole"},"질문·답변·검증한 사료를 정리해 보세요."),ta,h("div",{class:"pactions"},h("button",{class:"btn",onclick:function(){notes=notes.filter(function(n){return !(n.room===r.id&&n.user==="me")});if(ta.value.trim())notes.push({room:r.id,user:"me",text:ta.value.trim()});closeModal();toast("탐구 노트를 저장했어요.")}},"저장"),h("button",{class:"btn ghost",onclick:closeModal},"닫기"))));var m=$("#modal");m.replaceChildren(card);m.hidden=false;}
+function openSourceCard(){var title=h("input",{placeholder:"자료 제목",style:"width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--panel)"}),org=h("input",{placeholder:"기관·저자",style:"width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--panel)"}),url=h("input",{placeholder:"https://...",style:"width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--panel)"}),era=h("input",{placeholder:"시대·주제 (예: 조선 전기)",style:"width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--panel)"});var card=h("div",{class:"pcard"},h("div",{class:"pbody",style:"padding-top:22px"},h("p",{class:"pname",style:"margin-top:0"},"역사 자료 출처 카드"),h("p",{class:"prole"},"공유 전에 출처와 자료 내용을 직접 확인하세요."),h("label",{class:"field"},h("span",{},"자료 제목"),title),h("label",{class:"field"},h("span",{},"기관·저자"),org),h("label",{class:"field"},h("span",{},"자료 링크"),url),h("label",{class:"field"},h("span",{},"시대·주제"),era),h("div",{class:"pactions"},h("button",{class:"btn",onclick:function(){if(!title.value.trim()||!url.value.match(/^https?:\/\//)){toast("자료 제목과 올바른 http(s) 링크를 입력해 주세요.");return;}chats[cur].push({from:"me",text:"역사 자료를 공유합니다.",url:url.value.trim(),sharedHistory:{figure:"출처 카드",content:"자료: "+title.value.trim()+"\n기관·저자: "+org.value.trim()+"\n시대·주제: "+era.value.trim()},time:new Date()});closeModal();renderMain();toast("출처 카드를 공유했어요.")}},"공유"),h("button",{class:"btn ghost",onclick:closeModal},"취소"))));var m=$("#modal");m.replaceChildren(card);m.hidden=false;}
+function openQuizSite(){window.open("https://tdwsdl86pobibig.github.io/","_blank","noopener,noreferrer");}
+function exportChat(){var r=activeRoom();if(!r)return;var txt=(chats[cur]||[]).map(function(m){return "["+fmt(m.time)+"] "+((profiles[m.from]||{name:m.from}).name)+": "+m.text+(m.url?"\n"+m.url:"")}).join("\n\n");var blob=new Blob([txt],{type:"text/plain;charset=utf-8"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=(r.name||"역사톡")+"_대화.txt";a.click();URL.revokeObjectURL(a.href);}
+function editMessage(m){var inp=h("textarea",{rows:"4",style:"width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--panel)"},m.text);var card=h("div",{class:"pcard"},h("div",{class:"pbody",style:"padding-top:22px"},h("p",{class:"pname",style:"margin-top:0"},"메시지 수정"),inp,h("div",{class:"pactions"},h("button",{class:"btn",onclick:function(){m.text=inp.value.trim()||m.text;closeModal();renderMain()}},"저장"),h("button",{class:"btn ghost",onclick:closeModal},"취소"))));var md=$("#modal");md.replaceChildren(card);md.hidden=false;}
+function deleteMessage(m){if(!confirm("이 메시지를 삭제할까요?"))return;chats[cur]=chats[cur].filter(function(x){return x!==m});renderMain();}
+function reportMessage(m){toast("신고가 기록됐어요. 선생님에게 직접 상황을 알려 주세요.");}
+function addPhoto(){var r=activeRoom();if(!r)return;$("#imagePicker").click();}
+$("#imagePicker").addEventListener("change",function(e){var f=e.target.files&&e.target.files[0];if(!f)return;if(f.size>2*1024*1024){toast("시연용 사진은 2MB 이하로 선택해 주세요.");e.target.value="";return;}var reader=new FileReader();reader.onload=function(){chats[cur].push({from:"me",text:"사진을 공유했습니다.",image:reader.result,time:new Date()});renderMain();};reader.readAsDataURL(f);e.target.value="";});
+
+/* ---------- 프로필 ---------- */
+function bannerStyle(p){
+  if(p.bg)return 'background-image:url("'+p.bg+'")';
+  return "background:linear-gradient(135deg,"+p.color+",color-mix(in srgb,"+p.color+" 50%,#0f151a))";
+}
+function closeModal(){$("#modal").hidden=true;$("#modal").replaceChildren()}
+function row(label,val,note){
+  return [h("dt",{},label),h("dd",{class:val?"":"muted"},val||"아직 입력하지 않았어요",note&&h("div",{class:"muted",style:"font-size:12px"},note))];
+}
+function openProfile(id,editing){
+  var p=profiles[id],isMe=id==="me",isFig=p.kind==="figure";
+  var banner=h("div",{class:"banner",style:bannerStyle(p)},
+    h("button",{class:"iconbtn x","aria-label":"닫기",onclick:closeModal},icon("close")));
+  var pav=h("div",{class:"pav"},avatar(p,80));
+  function refreshVisuals(){
+    banner.setAttribute("style",bannerStyle(p));
+    var x=h("button",{class:"iconbtn x","aria-label":"닫기",onclick:closeModal},icon("close"));
+    banner.replaceChildren(x);
+    pav.replaceChildren(avatar(p,80));
+    renderSide();renderMain();
+  }
+  function pick(label,key){
+    var inp=h("input",{type:"file",accept:"image/*",hidden:true,onchange:function(e){
+      var f=e.target.files[0];if(!f)return;
+      var r=new FileReader();r.onload=function(){p[key]=r.result;refreshVisuals()};r.readAsDataURL(f);
+    }});
+    return h("label",{class:"btn ghost small",style:"cursor:pointer"},label,inp);
+  }
+  var body=h("div",{class:"pbody"},pav);
+  if(editing&&isMe){
+    var fName=h("input",{value:p.name,maxlength:"10"});
+    var fBirth=h("input",{value:p.birthday||"",placeholder:"예: 3월 14일"});
+    var fLike=h("input",{value:p.likes||"",placeholder:"예: 축구, 만화책"});
+    var fTrait=h("textarea",{placeholder:"나를 소개하는 말을 적어 보세요"},p.traits||"");
+    body.append(
+      h("p",{class:"prole",style:"margin-top:10px"},"프로필 수정"),
+      h("div",{class:"pactions",style:"margin:0 0 12px"},pick("사진 바꾸기","img"),pick("배경 바꾸기","bg")),
+      h("label",{class:"field"},h("span",{},"이름"),fName),
+      h("label",{class:"field"},h("span",{},"생일"),fBirth,h("div",{class:"muted",style:"font-size:12px;margin-top:4px"},"연도는 적지 않아도 돼요. 입력한 내용은 다른 사람에게 그대로 보여요.")),
+      h("label",{class:"field"},h("span",{},"좋아하는 것"),fLike),
+      h("label",{class:"field"},h("span",{},"특징"),fTrait),
+      h("div",{class:"pactions"},
+        h("button",{class:"btn",onclick:function(){
+          p.name=fName.value.trim()||p.name;p.birthday=fBirth.value.trim();p.likes=fLike.value.trim();p.traits=fTrait.value.trim();
+          renderSide();renderMain();openProfile(id,false);toast("프로필을 저장했어요.");
+        }},"저장"),
+        h("button",{class:"btn ghost",onclick:function(){openProfile(id,false)}},"취소")));
+  }else{
+    var tagTxt=isFig?"역사 인물 대화 재구성":(p.kind==="teacher"?"선생님":"학생");
+    body.append(
+      h("p",{class:"pname"},p.name),
+      h("p",{class:"prole"},tagTxt+(p.role?", "+p.role:"")),
+      h("dl",{class:"rows"},
+        row("개인 코드",!isFig&&p.personalCode?p.personalCode:(isFig?"해당 없음":"계정 코드")),
+        row("생일",isFig?p.born:p.birthday),
+        isFig?row("사망일",p.died):null,
+        row("좋아하는 것",p.likes),
+        row("특징",p.traits)),
+      h("div",{class:"pactions"},
+        isMe&&h("button",{class:"btn",onclick:function(){openProfile(id,true)}},"프로필 수정"),
+        isMe&&p.personalCode&&h("button",{class:"btn ghost",onclick:function(){GenCopy(p.personalCode);toast("개인 코드를 복사했어요.")}},"개인 코드 복사"),
+        !isMe&&isFig&&h("button",{class:"btn",onclick:function(){closeModal();go("f:"+id)}},"대화하기"),
+        h("button",{class:"btn ghost",onclick:closeModal},"닫기")));
+    if(isFig)body.append(h("p",{class:"hint",style:"margin-bottom:0"},"대화는 미리 작성된 시나리오를 바탕으로 재구성됩니다. 실제 발언과 창작된 말투를 구분하고, 참고 자료를 직접 확인해 주세요."));
+  }
+  var card=h("div",{class:"pcard",role:"dialog","aria-modal":"true","aria-label":p.name+" 프로필"},banner,body);
+  var m=$("#modal");m.replaceChildren(card);m.hidden=false;
+}
+
+/* ---------- 방 만들기(교직원) ---------- */
+function openNewRoom(){
+  var nm=h("input",{placeholder:"예: 임진왜란 모둠 토론",maxlength:"24"});
+  var card=h("div",{class:"pcard",role:"dialog","aria-modal":"true","aria-label":"방 만들기"},
+    h("div",{class:"pbody",style:"padding-top:22px"},
+      h("p",{class:"pname",style:"margin-top:0"},"방 만들기"),
+      h("p",{class:"prole"},"만든 방에는 우리 반 학생들이 함께 들어와요."),
+      h("label",{class:"field"},h("span",{},"방 이름"),nm),
+      h("div",{class:"pactions"},
+        h("button",{class:"btn",onclick:function(){
+          var name=nm.value.trim();if(!name){toast("방 이름을 적어 주세요.");return}
+          var id="r"+Date.now();
+          var code=makeCode();
+          rooms.push({id:id,name:name,code:code,owner:"me",members:["me"],pending:[],kicked:[]});
+          chats["r:"+id]=[];closeModal();go("r:"+id);toast("방을 만들었어요. 방 코드: "+code);
+        }},"만들기"),
+        h("button",{class:"btn ghost",onclick:closeModal},"취소"))));
+  var m=$("#modal");m.replaceChildren(card);m.hidden=false;nm.focus();
+}
+
+/* ---------- 이벤트 ---------- */
+$("#modal").addEventListener("click",function(e){if(e.target===this)closeModal()});
+document.addEventListener("keydown",function(e){if(e.key==="Escape"&&!$("#modal").hidden)closeModal()});
+$("#scrim").addEventListener("click",closeSide);
+$("#meBtn").addEventListener("click",function(){openProfile("me")});
+$("#logoutBtn").innerHTML=ICON.out;
+$("#sendBtn").innerHTML=ICON.send;
+$("#noticeClose").addEventListener("click",function(){$("#notice").hidden=true});
+$("#sendBtn").addEventListener("click",function(){var i=$("#input");send(i.value);i.value="";i.style.height="auto"});
+$("#photoBtn").addEventListener("click",addPhoto);
+$("#editNoticeBtn").addEventListener("click",editPinnedNotice);
+$("#input").addEventListener("keydown",function(e){
+  if(e.key==="Enter"&&!e.shiftKey&&!e.isComposing){e.preventDefault();send(this.value);this.value="";this.style.height="auto"}
+});
+$("#input").addEventListener("input",function(){this.style.height="auto";this.style.height=Math.min(this.scrollHeight,120)+"px"});
+
+function setRole(r){
+  role=r;
+  $("#tabStudent").setAttribute("aria-pressed",r==="student");
+  $("#tabTeacher").setAttribute("aria-pressed",r==="teacher");
+  $("#loginName").placeholder=r==="teacher"?"예: 김민수":"예: 김하늘";
+}
+$("#tabStudent").addEventListener("click",function(){setRole("student")});
+$("#tabTeacher").addEventListener("click",function(){setRole("teacher")});
+$("#authToggle").addEventListener("click",function(){registerMode=!registerMode;$("#authSubmit").textContent=registerMode?"회원가입":"로그인";this.textContent=registerMode?"이미 계정이 있나요? 로그인":"처음이신가요? 회원가입";$("#loginPw").placeholder=registerMode?"6자 이상 비밀번호":"비밀번호";$("#authHint").textContent=registerMode?"개인 코드는 회원가입 시 발급됩니다. 이 시연용 계정은 현재 브라우저에만 저장돼요.":"시연용 계정은 이 브라우저에만 저장됩니다. 실제 서비스에는 Firebase 인증 연결이 필요합니다.";});
+$("#loginForm").addEventListener("submit",function(e){
+  e.preventDefault();
+  var nm=$("#loginName").value.trim(),pw=$("#loginPw").value;
+  if(!nm||!pw){toast("이름과 비밀번호를 입력해 주세요.");return;}
+  var key=role+":"+nm.toLowerCase();
+  try{accounts=JSON.parse(localStorage.getItem("historiatalk_accounts")||"{}")}catch(_){accounts={}}
+  if(registerMode){
+    if(pw.length<6){toast("비밀번호는 6자 이상으로 설정해 주세요.");return;}
+    if(accounts[key]){toast("이미 가입된 이름이에요. 로그인해 주세요.");return;}
+    var code=makePersonalCode();accounts[key]={name:nm,pw:pw,role:role,code:code};localStorage.setItem("historiatalk_accounts",JSON.stringify(accounts));toast("회원가입 완료! 개인 코드: "+code);
+  }else if(accounts[key]&&accounts[key].pw!==pw){toast("비밀번호가 일치하지 않아요.");return;}
+  init();
+  var acct=accounts[key];
+  profiles.me=me={id:"me",name:nm,kind:role==="teacher"?"teacher":"student",color:"#5B6C8F",role:role==="teacher"?"교직원":"학생",birthday:"",likes:"",traits:"",img:null,bg:null,personalCode:acct?acct.code:makePersonalCode()};
+  if(!accounts[key]){accounts[key]={name:nm,pw:pw,role:role,code:profiles.me.personalCode};try{localStorage.setItem("historiatalk_accounts",JSON.stringify(accounts))}catch(_){}}
+  $("#login").hidden=true;$("#app").hidden=false;$("#notice").hidden=false;
+  renderSide();renderMain();
+});
+$("#logoutBtn").addEventListener("click",function(){
+  $("#app").hidden=true;$("#login").hidden=false;$("#loginPw").value="";closeSide();closeModal();
+});
+init();
+})();
+</script>
+</body>
+</html>

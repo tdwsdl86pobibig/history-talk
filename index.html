@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>역사톡 프로토타입</title>
+<title>역사톡 | 역사로 연결되는 우리</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=Noto+Serif+KR:wght@500;700&display=swap" rel="stylesheet">
@@ -187,11 +187,12 @@ input,textarea{font:inherit;color:inherit}
       <button type="button" id="tabStudent" aria-pressed="true">학생</button>
       <button type="button" id="tabTeacher" aria-pressed="false">교직원</button>
     </div>
-    <label class="field"><span>이름</span><input id="loginName" placeholder="예: 김하늘"></label>
-    <label class="field"><span>비밀번호</span><input id="loginPw" type="password" placeholder="프로토타입에서는 아무거나 괜찮아요"></label>
+    <label class="field" id="displayNameField" hidden><span>이름</span><input id="loginDisplayName" type="text" maxlength="20" placeholder="예: 김하늘" autocomplete="name"></label>
+    <label class="field"><span>이메일</span><input id="loginName" type="email" placeholder="example@email.com" autocomplete="username" required></label>
+    <label class="field"><span>비밀번호</span><input id="loginPw" type="password" placeholder="비밀번호를 입력해 주세요" autocomplete="current-password" required></label>
     <button class="btn full" type="submit" id="authSubmit">로그인</button>
     <button class="btn ghost full" type="button" id="authToggle" style="margin-top:8px">처음이신가요? 회원가입</button>
-    <p class="hint" id="authHint">시연용 계정은 이 브라우저에만 저장됩니다. 실제 보안이 필요한 서비스에는 Firebase 인증 연결이 필요합니다.</p>
+    <p class="hint" id="authHint">Firebase 이메일·비밀번호 인증으로 로그인합니다. 채팅방과 메시지는 시연용으로 이 브라우저에만 표시됩니다.</p>
   </form>
 </section>
 
@@ -215,7 +216,7 @@ input,textarea{font:inherit;color:inherit}
   <section class="main">
     <header class="head" id="head"></header>
     <div class="notice" id="notice">
-      <p>역사 인물 대화는 준비된 시나리오를 바탕으로 작동합니다. 학급 채팅의 계정·방·승인 기능은 현재 브라우저 내 시연용이며, 실제 여러 기기 간 동기화와 안전한 인증에는 Firebase 연결이 필요합니다. 공유한 자료의 출처와 내용은 직접 확인해 주세요.</p>
+      <p>역사 인물 대화는 준비된 시나리오를 바탕으로 작동합니다. 학급 채팅의 계정·방·승인 기능은 현재 브라우저 내 시연용이며, 채팅방과 메시지는 화면 시연을 위한 예시이며, 실제 다른 사용자에게 전송되거나 동기화되지 않습니다. 공유한 자료의 출처와 내용은 직접 확인해 주세요.</p>
       <button id="noticeClose">닫기</button>
     </div>
     <div class="toolsbar" id="toolsbar" hidden></div>
@@ -236,7 +237,22 @@ input,textarea{font:inherit;color:inherit}
 <div class="overlay" id="modal" hidden></div>
 <div class="toast" id="toast" hidden></div>
 
-<script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBrLXNrSsjSjw2ebHXcXtscF6_Q2QTev9s",
+  authDomain: "history-talk-16716.firebaseapp.com",
+  projectId: "history-talk-16716",
+  storageBucket: "history-talk-16716.firebasestorage.app",
+  messagingSenderId: "182632875475",
+  appId: "1:182632875475:web:e868fb023d964813fe1b26",
+  measurementId: "G-9PLS8E3LZK"
+};
+const firebaseApp = initializeApp(firebaseConfig);
+const auth = getAuth(firebaseApp);
+
 (function(){
 "use strict";
 var $=function(s){return document.querySelector(s)};
@@ -364,6 +380,76 @@ var BLOCK=["야동","19금","성관계","섹스","시발","씨발","병신","개
 
 /* ---------- 상태 ---------- */
 var profiles,FIG,rooms,chats,cur,role="student",typingKey=null,me,accounts={},registerMode=false,pendingJoins=[],notes=[],pinnedNotices={},currentReply=null,editingMessage=null;
+var activeFirebaseUser=null, appStarted=false, authSubmitting=false;
+function launchApp(user, selectedRole){
+  if(!user || appStarted) return;
+  appStarted=true; activeFirebaseUser=user;
+  role=selectedRole || localStorage.getItem("historytalk_role_"+user.uid) || "student";
+  var nm=user.displayName || (user.email||"학생").split("@")[0];
+  init();
+  var personalCode=localStorage.getItem("historytalk_code_"+user.uid) || makePersonalCode();
+  localStorage.setItem("historytalk_code_"+user.uid,personalCode);
+  profiles.me=me={id:"me",name:nm,kind:role==="teacher"?"teacher":"student",color:"#5B6C8F",role:role==="teacher"?"교직원":"학생",birthday:"",likes:"",traits:"",img:null,bg:null,personalCode:personalCode,email:user.email||""};
+  $("#login").hidden=true; $("#app").hidden=false; $("#notice").hidden=false;
+  renderSide(); renderMain();
+}
+function authMessage(err){
+  var messages={
+    "auth/email-already-in-use":"이미 가입된 이메일입니다. 로그인해 주세요.",
+    "auth/invalid-email":"이메일 주소를 확인해 주세요.",
+    "auth/weak-password":"비밀번호는 6자 이상으로 설정해 주세요.",
+    "auth/user-not-found":"가입된 계정을 찾을 수 없습니다.",
+    "auth/wrong-password":"이메일 또는 비밀번호가 올바르지 않습니다.",
+    "auth/invalid-credential":"이메일 또는 비밀번호가 올바르지 않습니다.",
+    "auth/too-many-requests":"요청이 많습니다. 잠시 후 다시 시도해 주세요.",
+    "auth/network-request-failed":"네트워크 연결을 확인해 주세요."
+  };
+  toast(messages[err.code] || "인증에 실패했습니다. 잠시 후 다시 시도해 주세요.");
+}
+
+/* 로그인 UI 이벤트는 다른 화면 코드의 오류와 무관하게 먼저 연결합니다. */
+function setRole(r){
+  role=r;
+  $("#tabStudent").setAttribute("aria-pressed",r==="student");
+  $("#tabTeacher").setAttribute("aria-pressed",r==="teacher");
+  $("#loginName").placeholder="example@email.com";
+}
+$("#tabStudent").addEventListener("click",function(){setRole("student")});
+$("#tabTeacher").addEventListener("click",function(){setRole("teacher")});
+$("#authToggle").addEventListener("click",function(){
+  registerMode=!registerMode;
+  $("#authSubmit").textContent=registerMode?"회원가입":"로그인";
+  this.textContent=registerMode?"이미 계정이 있나요? 로그인":"처음이신가요? 회원가입";
+  $("#displayNameField").hidden=!registerMode;
+  $("#loginPw").autocomplete=registerMode?"new-password":"current-password";
+  $("#authHint").textContent=registerMode?"Firebase에 계정이 생성됩니다. 비밀번호는 안전하게 관리해 주세요.":"Firebase 이메일·비밀번호 인증으로 로그인합니다. 채팅방과 메시지는 시연용입니다.";
+});
+$("#loginForm").addEventListener("submit",async function(e){
+  e.preventDefault();
+  var email=$("#loginName").value.trim().toLowerCase();
+  var pw=$("#loginPw").value;
+  var nm=$("#loginDisplayName").value.trim();
+  if(!email||!pw){toast("이메일과 비밀번호를 입력해 주세요.");return;}
+  if(registerMode&&!nm){toast("이름을 입력해 주세요.");return;}
+  var btn=$("#authSubmit"); btn.disabled=true; btn.textContent=registerMode?"가입 중...":"로그인 중...";
+  authSubmitting=true;
+  try{
+    var credential;
+    if(registerMode){
+      credential=await createUserWithEmailAndPassword(auth,email,pw);
+      await updateProfile(credential.user,{displayName:nm});
+      localStorage.setItem("historytalk_role_"+credential.user.uid,role);
+      toast("회원가입이 완료되었습니다.");
+    }else{
+      credential=await signInWithEmailAndPassword(auth,email,pw);
+      var savedRole=localStorage.getItem("historytalk_role_"+credential.user.uid);
+      if(!savedRole) localStorage.setItem("historytalk_role_"+credential.user.uid,role);
+      toast("로그인되었습니다.");
+    }
+    launchApp(credential.user,localStorage.getItem("historytalk_role_"+credential.user.uid)||role);
+  }catch(err){authMessage(err);}
+  finally{authSubmitting=false;btn.disabled=false;btn.textContent=registerMode?"회원가입":"로그인";}
+});
 
 function init(){
   profiles={};FIG={};
@@ -778,37 +864,14 @@ $("#input").addEventListener("keydown",function(e){
 });
 $("#input").addEventListener("input",function(){this.style.height="auto";this.style.height=Math.min(this.scrollHeight,120)+"px"});
 
-function setRole(r){
-  role=r;
-  $("#tabStudent").setAttribute("aria-pressed",r==="student");
-  $("#tabTeacher").setAttribute("aria-pressed",r==="teacher");
-  $("#loginName").placeholder=r==="teacher"?"예: 김민수":"예: 김하늘";
-}
-$("#tabStudent").addEventListener("click",function(){setRole("student")});
-$("#tabTeacher").addEventListener("click",function(){setRole("teacher")});
-$("#authToggle").addEventListener("click",function(){registerMode=!registerMode;$("#authSubmit").textContent=registerMode?"회원가입":"로그인";this.textContent=registerMode?"이미 계정이 있나요? 로그인":"처음이신가요? 회원가입";$("#loginPw").placeholder=registerMode?"6자 이상 비밀번호":"비밀번호";$("#authHint").textContent=registerMode?"개인 코드는 회원가입 시 발급됩니다. 이 시연용 계정은 현재 브라우저에만 저장돼요.":"시연용 계정은 이 브라우저에만 저장됩니다. 실제 서비스에는 Firebase 인증 연결이 필요합니다.";});
-$("#loginForm").addEventListener("submit",function(e){
-  e.preventDefault();
-  var nm=$("#loginName").value.trim(),pw=$("#loginPw").value;
-  if(!nm||!pw){toast("이름과 비밀번호를 입력해 주세요.");return;}
-  var key=role+":"+nm.toLowerCase();
-  try{accounts=JSON.parse(localStorage.getItem("historiatalk_accounts")||"{}")}catch(_){accounts={}}
-  if(registerMode){
-    if(pw.length<6){toast("비밀번호는 6자 이상으로 설정해 주세요.");return;}
-    if(accounts[key]){toast("이미 가입된 이름이에요. 로그인해 주세요.");return;}
-    var code=makePersonalCode();accounts[key]={name:nm,pw:pw,role:role,code:code};localStorage.setItem("historiatalk_accounts",JSON.stringify(accounts));toast("회원가입 완료! 개인 코드: "+code);
-  }else if(accounts[key]&&accounts[key].pw!==pw){toast("비밀번호가 일치하지 않아요.");return;}
-  init();
-  var acct=accounts[key];
-  profiles.me=me={id:"me",name:nm,kind:role==="teacher"?"teacher":"student",color:"#5B6C8F",role:role==="teacher"?"교직원":"학생",birthday:"",likes:"",traits:"",img:null,bg:null,personalCode:acct?acct.code:makePersonalCode()};
-  if(!accounts[key]){accounts[key]={name:nm,pw:pw,role:role,code:profiles.me.personalCode};try{localStorage.setItem("historiatalk_accounts",JSON.stringify(accounts))}catch(_){}}
-  $("#login").hidden=true;$("#app").hidden=false;$("#notice").hidden=false;
-  renderSide();renderMain();
+$("#logoutBtn").addEventListener("click",async function(){
+  try{await signOut(auth);}catch(err){authMessage(err);}
+  appStarted=false; activeFirebaseUser=null;
+  $("#app").hidden=true; $("#login").hidden=false; $("#loginPw").value=""; closeSide(); closeModal();
 });
-$("#logoutBtn").addEventListener("click",function(){
-  $("#app").hidden=true;$("#login").hidden=false;$("#loginPw").value="";closeSide();closeModal();
+onAuthStateChanged(auth,function(user){
+  if(user && !appStarted && !authSubmitting){launchApp(user,localStorage.getItem("historytalk_role_"+user.uid)||"student");}
 });
-init();
 })();
 </script>
 </body>
